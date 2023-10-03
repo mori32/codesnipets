@@ -128,7 +128,6 @@ public:
 
         for (size_t i = 0; i < sentences.size(); ++i) {
             std::vector<float> probList;
-            probList.emplace_back(1.0f);
             for (size_t tokenIndex = 1; tokenIndex < sentences[i].size(); ++tokenIndex) {
                 const auto targetVectorOffset = i * sequenceCount * tokenCount + (tokenIndex - 1) * tokenCount;
                 resultOutput.GetAsVectorView().GetMany(targetVectorOffset, tokenVectorView);
@@ -146,6 +145,97 @@ public:
         return result;
     }
     catch (...) { return std::vector<std::vector<float>>(); }
+
+    void CompareSentenceDiffs(const std::vector<std::vector<int>>& sentences, int eosId, float* resultProbs) override try {
+        const auto startTime = std::chrono::system_clock::now();
+        EnsureInitialized();
+
+        // getting max token size
+        auto maxTokenSize = sentences[0].size();
+        for (const auto& sentence : sentences) {
+            maxTokenSize = std::max(maxTokenSize, sentence.size());
+        }
+
+        // allocate token and attention-mask matrix
+        std::vector<int64_t> tokenArray(maxTokenSize * sentences.size(), 0LL);
+        std::vector<int64_t> attentionMaskArray(maxTokenSize * sentences.size(), 0LL);
+
+        // setup token and attention-mask matrix
+        for (size_t i = 0; i < sentences.size(); ++i) {
+            const auto& sentence = sentences[i];
+            auto tokenTop = &tokenArray[i * maxTokenSize];
+            auto maskTop = &attentionMaskArray[i * maxTokenSize];
+            for (size_t j = 0; j < sentence.size(); ++j) {
+                tokenTop[j] = sentence[j];
+                maskTop[j] = 1LL;
+            }
+        }
+
+        // finding different token index
+        size_t compareStartPoint = 0;
+        for (size_t i = 0; i < maxTokenSize; ++i) {
+            if (i >= sentences[0].size()) {
+                compareStartPoint = i;
+                break;
+            }
+            const auto targetToken = sentences[0][i];
+            for (size_t j = 1; j < sentences.size(); ++j) {
+                if (i >= sentences[j].size() || targetToken != sentences[j][i]) {
+                    compareStartPoint = i;
+                    break;
+                }
+            }
+            if (compareStartPoint != 0) {
+                break;
+            }
+        }
+
+        // binding input
+        m_binding.Clear();
+        const auto& inputIdsTensor = winrt::TensorInt64Bit::CreateFromArray({ sentences.size(), maxTokenSize }, tokenArray);
+        m_binding.Bind(L"input_ids", inputIdsTensor);
+
+        const auto& attentionTensor = winrt::TensorInt64Bit::CreateFromArray({ sentences.size(), maxTokenSize }, attentionMaskArray);
+        m_binding.Bind(L"attention_mask", attentionTensor);
+
+        const auto& results = m_session.Evaluate(m_binding, L"correlationId");
+        const auto evaluateEndTime = std::chrono::system_clock::now();
+
+        const auto& resultOutput = results.Outputs().Lookup(L"logits").as<winrt::TensorFloat>();
+        const auto& outputShape = resultOutput.Shape();
+        if (outputShape.Size() != 3) throw std::runtime_error("unexpected shape");
+
+        const auto batchCount = outputShape.GetAt(0);
+        const auto sequenceCount = outputShape.GetAt(1);
+        const auto tokenCount = outputShape.GetAt(2);
+
+        std::vector<std::vector<float>> result;
+
+        MemAlignedTensor tokenVector;
+        tokenVector.Reserve(1, tokenCount);
+        auto [bufferPtr, _rowSize, _columnSize] = tokenVector.GetBuffer();
+        auto tokenVectorView = winrt::array_view<float>(bufferPtr, bufferPtr + tokenCount);
+
+        for (size_t i = 0; i < sentences.size(); ++i) {
+            float sentenceScore = 0.0f;
+            std::vector<float> probList;
+            for (size_t tokenIndex = compareStartPoint; tokenIndex < sentences[i].size(); ++tokenIndex) {
+                if (tokenIndex > 0) { // TODO: consider if top token should not be 1.0?
+                    const auto targetVectorOffset = i * sequenceCount * tokenCount + (tokenIndex - 1) * tokenCount;
+                    resultOutput.GetAsVectorView().GetMany(targetVectorOffset, tokenVectorView);
+                    const auto probability = tokenVector.GetProbability(sentences[i][tokenIndex]);
+                    sentenceScore += logf(probability);
+                }
+            }
+            const auto targetVectorOffset = i * sequenceCount * tokenCount + (sentences[i].size() - 1) * tokenCount;
+            resultOutput.GetAsVectorView().GetMany(targetVectorOffset, tokenVectorView);
+            const auto probability = tokenVector.GetProbability(eosId);
+            sentenceScore += logf(probability);
+
+            resultProbs[i] = sentenceScore;
+        }
+    }
+    catch (...) { }
 
 private:
     void EnsureInitialized() {
