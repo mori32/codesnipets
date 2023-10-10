@@ -1,54 +1,54 @@
-﻿#include <iostream>
+#include <iostream>
 #include <io.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include "tokenizer.h"
 #include "onnxConnector.h"
 
-const auto modelDir = std::wstring(L"../my_onnx_gpt/"); // GPT2 216MB
-// const auto modelDir = std::wstring(L"../rinna-neox-small/"); // GPT-NeOX 619MB
-// const auto modelDir = std::wstring(L"../rinna-neox-3.6b/"); // GPT-NeOX 14GB
-// const auto modelDir = std::wstring(L""); // current
+#pragma comment(lib, "onnxruntime.lib")
 
-#if 0 // old test code
+//const std::wstring modelDir = L"../onnx-models/rinna-gpt2-xsmall/";
+//const std::wstring modelDir = L"../onnx-models/rinna-japanese-gpt2-small/";
+const std::wstring modelDir = L"../onnx-models/rinna-neox-3.6b/";
+
 void TestSentencePiece() {
 	auto&& tokenizer = Tokenizer::CreateInstance();
-	tokenizer->Load(L"../my_onnx_gpt/spiece.model");
+	tokenizer->Load((modelDir + L"spiece.model").c_str());
 
 	const auto tokenVector = tokenizer->Encode64(L"こんにちは");
 
 	for (const auto& token : tokenVector) {
-		printf("%lld, ", token);
+		wprintf(L"%ld, ", token);
 	}
-	printf("\n");
+	wprintf(L"\n");
 
-	const auto decodedText = tokenizer->Decode64(&tokenVector[0], tokenVector.size());
+	const auto decodedText = tokenizer->Decode(&tokenVector[0], tokenVector.size());
 
 	wprintf(L"%s\n", decodedText.c_str());
 }
 
 void TestOnnxModel() {
 	auto&& tokenizer = Tokenizer::CreateInstance();
-	tokenizer->Load(L"../my_onnx_gpt/spiece.model");
+	tokenizer->Load((modelDir + L"spiece.model").c_str());
 
 	auto&& onnx = OnnxConnector::CreateInstance();
-	onnx->Initialize(L"../my_onnx_gpt/decoder_model.onnx");
+	onnx->Initialize((modelDir + L"decoder_model.onnx").c_str());
 
 	const auto tokenVector = tokenizer->Encode64(L"こんにちは");
 
 	auto [nextToken, nextProb] = onnx->GetPrediction(tokenVector);
 
-	const auto decodedText = tokenizer->Decode64(&nextToken, 1);
+	const auto decodedText = tokenizer->Decode(&nextToken, 1);
 }
 
 void TestLongPrediction(std::wstring_view sourceText) {
 	wprintf(L"%s => ", sourceText.data());
 
 	auto&& tokenizer = Tokenizer::CreateInstance();
-	tokenizer->Load(L"../my_onnx_gpt/spiece.model");
+	tokenizer->Load((modelDir + L"spiece.model").c_str());
 
 	auto&& onnx = OnnxConnector::CreateInstance();
-	onnx->Initialize(L"../my_onnx_gpt/decoder_model.onnx");
+	onnx->Initialize((modelDir + L"decoder_model.onnx").c_str());
 
 	std::wstring currentText(sourceText);
 
@@ -59,19 +59,21 @@ void TestLongPrediction(std::wstring_view sourceText) {
 		auto [nextToken, nextProb] = onnx->GetPrediction(tokenVector);
 
 		tokenVector.push_back(nextToken);
-		currentText = tokenizer->Decode64(&tokenVector[0], tokenVector.size());
+		currentText = tokenizer->Decode(&tokenVector[0], tokenVector.size());
 	}
 
 	wprintf(L"%s\n", currentText.c_str());
 }
-#endif // old test code
 
 void CompareSentences(const std::vector<const wchar_t*> sentences) {
 	auto&& tokenizer = Tokenizer::CreateInstance();
 	tokenizer->Load((modelDir + L"spiece.model").c_str());
 
-	auto&& onnx = OnnxConnector::CreateInstance();
-	onnx->Initialize((modelDir + L"decoder_model.onnx").c_str());
+	static std::shared_ptr<OnnxConnector> onnx;
+	if (!onnx) {
+		onnx = OnnxConnector::CreateInstance();
+		onnx->Initialize((modelDir + L"decoder_model.onnx").c_str());
+	}
 
 	std::vector<std::vector<int>> tokensList;
 	for (const auto sentence : sentences) {
@@ -96,13 +98,22 @@ void CompareSentences(const std::vector<const wchar_t*> sentences) {
 	}
 }
 
-
-
 int main()
 {
 	(void)_setmode(_fileno(stdout), _O_U16TEXT);
 
 #if 0
+	TestSentencePiece();
+#endif
+#if 0
+	TestOnnxModel();
+#endif
+#if 0
+	TestLongPrediction(L"昔々あるところに");
+	TestLongPrediction(L"このたびは誠に");
+	TestLongPrediction(L"本日はお日柄もよく");
+#endif
+
 	CompareSentences({
 			L"庭で犬を飼う",
 			L"庭で犬を買う",
@@ -110,21 +121,18 @@ int main()
 		});
 
 	CompareSentences({
-			L"店で犬を飼う",
-			L"店で犬を買う",
-			L"店で犬をかう"
+			L"昨日犬を買った",
+			L"昨日犬を飼った",
+			L"昨日犬をかった",
+			L"昨日犬を勝った",
 		});
 
 	CompareSentences({
-			L"登校時間が、いつもよりとても速い",
-			L"登校時間が、いつもよりとても早い",
+			L"昨日から犬を買った",
+			L"昨日から犬を飼った",
+			L"昨日から犬をかった",
+			L"昨日から犬を勝った",
 		});
-
-	CompareSentences({
-			L"彼の足は、いつもよりとても速い",
-			L"彼の足は、いつもよりとても早い",
-		});
-#endif
 
 	CompareSentences({
 			L"私の姉の名前は陽子です。先日、姉の陽子",
@@ -147,28 +155,6 @@ int main()
 			L"私の姉の名前は陽子で、いとこの名前は葉子です。先日、いとこの陽子",
 			L"私の姉の名前は陽子で、いとこの名前は葉子です。先日、いとこの葉子",
 		});
-
-#if 0
-	CompareSentences({
-			L"姉は陽子で、いとこは葉子です。先日、姉の陽子に",
-			L"姉は陽子で、いとこは葉子です。先日、姉の葉子に",
-		});
-
-	CompareSentences({
-			L"姉は葉子で、いとこは陽子です。先日、姉の陽子に",
-			L"姉は葉子で、いとこは陽子です。先日、姉の葉子に",
-		});
-
-	CompareSentences({
-			L"渡邉様\nいつもお世話になっております。渡辺です。\n先日送付いたしました資料、渡邉",
-			L"渡邉様\nいつもお世話になっております。渡辺です。\n先日送付いたしました資料、渡辺",
-		});
-
-	CompareSentences({
-			L"渡辺様\nいつもお世話になっております。渡邉です。\n先日送付いたしました資料、渡邉",
-			L"渡辺様\nいつもお世話になっております。渡邉です。\n先日送付いたしました資料、渡辺"
-		});
-#endif
 
 	return 0;
 }

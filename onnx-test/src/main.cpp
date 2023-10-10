@@ -5,6 +5,10 @@
 #include "tokenizer.h"
 #include "onnxConnector.h"
 
+//const std::wstring modelDir = L"../../onnx-models/rinna-gpt2-xsmall/";
+//const std::wstring modelDir = L"../../onnx-models/rinna-japanese-gpt2-small/";
+const std::wstring modelDir = L"../../onnx-models/rinna-neox-3.6b/";
+
 void TestSentencePiece() {
 	auto&& tokenizer = Tokenizer::CreateInstance();
 	tokenizer->Load(L"../my_onnx_gpt/spiece.model");
@@ -39,10 +43,10 @@ void TestLongPrediction(std::wstring_view sourceText) {
 	wprintf(L"%s => ", sourceText.data());
 
 	auto&& tokenizer = Tokenizer::CreateInstance();
-	tokenizer->Load(L"../my_onnx_gpt/spiece.model");
+	tokenizer->Load((modelDir + L"spiece.model").c_str());
 
 	auto&& onnx = OnnxConnector::CreateInstance();
-	onnx->Initialize(L"../my_onnx_gpt/decoder_model.onnx");
+	onnx->Initialize((modelDir + L"decoder_model.onnx").c_str());
 
 	std::wstring currentText(sourceText);
 

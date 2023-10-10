@@ -86,7 +86,7 @@ public:
 
         // finding different token index
         size_t compareStartPoint = 0;
-        for (size_t i = 0; i < maxTokenSize; ++i) {
+        for (size_t i = 0; i < maxTokenSize && compareStartPoint == 0; ++i) {
             if (i >= sentences[0].size()) {
                 compareStartPoint = i - 1;
                 break;
