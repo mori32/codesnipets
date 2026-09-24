@@ -1,0 +1,12 @@
+[package]
+name = "ai_engine_cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+ai_engine_core = { path = "../ai_engine_core" }
+
+[lints]
+workspace = true

@@ -1,0 +1,24 @@
+[workspace]
+members = [
+    "crates/ai_engine_core",
+    "crates/ai_engine_cli",
+    "crates/ai_engine_bench",
+    "crates/ai_engine_dict",
+    "crates/ai_engine_llm",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = ""
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }

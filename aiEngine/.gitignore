@@ -1,0 +1,8 @@
+/target/
+*.pdb
+*.dll
+*.lib
+*.exe
+user_dictionary.json
+models/*.gguf
+models/*.onnx
