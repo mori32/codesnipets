@@ -2,13 +2,13 @@
 
 Rust で実装する、ローカル LLM を候補評価器として活用するかな漢字変換エンジンです。
 
-現在のワークスペースには、変換エンジン・LLM連携・辞書コンパイラ・CRF学習と評価のソースを残しています。コーパスの取得・加工・補正・集計に限定したツールと対応するテスト・作業資料は、今回の統合対象から外しています。学習用のコーパス・追加語データはローカル入力として扱い、Gitの統合対象から外しています。
+現在のワークスペースには、変換エンジン・入力編集・LLM候補評価の実行側6crateを残しています。crawl・辞書作成・CRF計算は独立リポジトリ [corpus-management](https://github.com/mori32/corpus-management) が担当し、aiEngineは計算済みのunigram / bigram / trigram / 8gramや辞書・モデルを読む側です。両者のソース依存は作りません。
 
 設計方針は [docs/02-design.md](docs/02-design.md) を参照してください。
 
 大容量データの配置、作業用フォルダの `README.md`、およびリポジトリ内に置ける生成物の例外は [docs/18-workspace-layout.md](docs/18-workspace-layout.md) を参照してください。
 
-移動できない既存データとして固定許可されているリポジトリ内の場所は `corpus\wiki-ja\chunked`、`corpus\wiki-ja\clean-split`、`corpus\wiki-ja\tagged-mecab-initial`、`dictionary\additions`、`dictionary\build`、`dictionary\candidates` のみです。これら以外のデータ置き場やrun履歴をリポジトリ内に増やさず、新規の中間データ・成果物は外部作業フォルダへ置きます。
+大容量の入力・モデルは外部作業領域に置きます。辞書作成用の既存データは `D:\Git\corpus-management\dictionary` へ移動しました。このリポジトリには、変換の動作確認に必要な小さなfixtureを残します。
 
 ## 開発の準備
 
@@ -147,17 +147,12 @@ cargo run -p ai_engine_eval --features llama-cpp -- `
 
 データセットの形式は `context<TAB>reading<TAB>expected surface` です。評価結果は候補を対象アプリへ commit せず、モデル・重み・辞書の比較だけに使用します。
 
-## Phase 5 の暫定 static-dictionary
+## 計算済み辞書の利用
 
-P5 の試験用として、UTF-8 TSV を依存なしの `.aidict` バイナリへ変換できます。現在は読み込み時にメモリ展開する暫定形式です。
+生成済みの `.aidict` をランタイムの入力に指定します。
 
 ```powershell
-cargo run -p ai_engine_dict -- compile dictionaries\phase2.tsv dictionaries\phase5.aidict
-cargo run -p ai_engine_cli -- ぷろとたいぷ --static-dictionary dictionaries\phase5.aidict
-
-# Mozc OSS dictionary_oss を使う場合
-cargo run -p ai_engine_dict -- compile-mozc path\to\mozc\src\data\dictionary_oss dictionaries\mozc-oss.aidict
-cargo run -p ai_engine_cli -- とうきょう --static-dictionary dictionaries\mozc-oss.aidict
+cargo run -p ai_engine_cli -- ぷろとたいぷ --static-dictionary dictionariesphase5.aidict
 ```
 
-Mozc importer は単語の `left_id` / `right_id` / `cost` と接続行列を `.aidict` に保存します。`connection.deflate` しかない公式ツリーでは、`build_tools/zlib_util.py` と Python を自動検出して一時展開します。詳細は [docs/05-static-dictionary.md](docs/05-static-dictionary.md) を参照してください。正式版では mmap と double-array trie に置き換えます。
+CRF計算はcorpus-managementの常設カーネルで行います。辞書作成などの周辺処理は同リポジトリのMD仕様から必要時に作成してください。[データ境界と現在のreader対応](docs/05-static-dictionary.md) に、未実装の正式ランタイム形式との接続も記載しています。

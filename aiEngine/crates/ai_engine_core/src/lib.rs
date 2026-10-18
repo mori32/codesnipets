@@ -13,7 +13,9 @@ mod static_dictionary;
 pub use dictionary::{Dictionary, Word};
 pub use engine::{Candidate, KanaKanjiEngine, RerankedCandidate, rerank_candidates};
 pub use normalize::to_hiragana;
-pub use static_dictionary::{ConnectionMatrix, MozcImportStats, StaticDictionary};
+#[cfg(test)]
+pub use static_dictionary::MozcImportStats;
+pub use static_dictionary::{ConnectionMatrix, StaticDictionary};
 
 /// Identifies the core crate at runtime for the CLI and FFI smoke tests.
 #[must_use]

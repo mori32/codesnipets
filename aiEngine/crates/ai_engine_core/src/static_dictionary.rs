@@ -1,16 +1,22 @@
-//! Provisional offline static-dictionary format.
+//! Runtime reader for the provisional static-dictionary exchange format.
+//! Production dictionary creation is independently owned by corpus-management.
+//! The legacy writer below is enabled only for small unit-test fixtures.
 //!
 //! The format is intentionally dependency-free and easy to replace. It is
 //! loaded into memory today; a later P5 implementation can keep the same
 //! compile/load contract while changing the runtime storage to mmap and a
 //! double-array trie.
 
+#[cfg(test)]
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(test)]
+use std::path::PathBuf;
 
 use crate::Word;
+#[cfg(test)]
 use crate::dictionary::parse_tsv;
 
 const MAGIC_V1: &[u8; 8] = b"AIDICT\0\x01";
@@ -52,6 +58,7 @@ impl ConnectionMatrix {
     ///
     /// Returns an I/O or invalid-data error when the file is unreadable,
     /// contains a non-integer value, or does not contain a square matrix.
+    #[cfg(test)]
     pub fn from_text_file(path: impl AsRef<Path>) -> io::Result<Self> {
         let data = fs::read_to_string(path)?;
         let mut numbers = Vec::new();
@@ -111,6 +118,7 @@ pub struct StaticDictionary {
 
 /// Counts produced by the provisional Mozc text importer.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[cfg(test)]
 pub struct MozcImportStats {
     pub files: usize,
     pub rows: usize,
@@ -129,6 +137,7 @@ impl StaticDictionary {
     ///
     /// Returns an I/O or validation error when the source cannot be read or a
     /// field cannot be represented by the provisional format.
+    #[cfg(test)]
     pub fn compile_tsv(
         source_path: impl AsRef<Path>,
         destination_path: impl AsRef<Path>,
@@ -150,6 +159,7 @@ impl StaticDictionary {
     ///
     /// Returns an I/O or invalid-data error when the directory is unreadable,
     /// no dictionary files are found, or a row is malformed.
+    #[cfg(test)]
     pub fn compile_mozc_directory(
         source_directory: impl AsRef<Path>,
         destination_path: impl AsRef<Path>,
@@ -168,6 +178,7 @@ impl StaticDictionary {
     ///
     /// Returns an I/O or invalid-data error when the source, connection
     /// matrix, or destination cannot be read or written.
+    #[cfg(test)]
     pub fn compile_mozc_directory_with_connection(
         source_directory: impl AsRef<Path>,
         connection_path: impl AsRef<Path>,
@@ -180,6 +191,7 @@ impl StaticDictionary {
         )
     }
 
+    #[cfg(test)]
     fn compile_mozc_directory_impl(
         source_directory: &Path,
         connection_path: Option<&Path>,
@@ -229,6 +241,7 @@ impl StaticDictionary {
     }
 }
 
+#[cfg(test)]
 fn load_mozc_connection(source_directory: &Path) -> io::Result<ConnectionMatrix> {
     let text_path = source_directory.join("connection_single_column.txt");
     if text_path.is_file() {
@@ -247,6 +260,7 @@ fn load_mozc_connection(source_directory: &Path) -> io::Result<ConnectionMatrix>
     Ok(ConnectionMatrix::default())
 }
 
+#[cfg(test)]
 fn mozc_dictionary_paths(source_directory: impl AsRef<Path>) -> io::Result<Vec<PathBuf>> {
     let mut paths = fs::read_dir(source_directory)?
         .filter_map(|entry| entry.ok().map(|entry| entry.path()))
@@ -273,6 +287,7 @@ fn mozc_dictionary_paths(source_directory: impl AsRef<Path>) -> io::Result<Vec<P
     Ok(paths)
 }
 
+#[cfg(test)]
 fn parse_mozc_file(
     path: &Path,
     entries: &mut BTreeMap<(String, String, u32, u32), Word>,
@@ -332,6 +347,7 @@ fn parse_mozc_file(
     Ok(())
 }
 
+#[cfg(test)]
 fn invalid_mozc_row(path: &Path, line_number: usize, message: &str) -> io::Error {
     io::Error::new(
         io::ErrorKind::InvalidData,
@@ -339,6 +355,7 @@ fn invalid_mozc_row(path: &Path, line_number: usize, message: &str) -> io::Error
     )
 }
 
+#[cfg(test)]
 fn encode(words: &[Word], connection: &ConnectionMatrix) -> io::Result<Vec<u8>> {
     let count = u32::try_from(words.len()).map_err(|_| {
         io::Error::new(
