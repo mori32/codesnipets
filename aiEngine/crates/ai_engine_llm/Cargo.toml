@@ -5,8 +5,19 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[features]
+default = []
+llama-cpp = []
+
 [dependencies]
 ai_engine_core = { path = "../ai_engine_core" }
 
-[lints]
-workspace = true
+[lints.rust]
+# The llama.cpp adapter is the only crate in the workspace that contains
+# isolated FFI calls. Keep the rest of the workspace under unsafe_code=forbid.
+unsafe_code = "allow"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }

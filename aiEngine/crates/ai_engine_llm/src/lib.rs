@@ -1,8 +1,9 @@
 //! Context scoring boundary and asynchronous orchestration.
 //!
-//! This crate deliberately contains no model runtime yet. `NoopScorer` and
-//! `FixedScorer` make the integration deterministic while a llama.cpp,
-//! Candle, or ONNX implementation can be added behind the same trait later.
+//! The default build has no native model dependency. `NoopScorer` and
+//! `FixedScorer` make the integration deterministic; the optional
+//! `llama-cpp` feature provides a GGUF-backed `LlamaCppScorer` behind the same
+//! trait.
 
 use std::error::Error;
 use std::fmt;
@@ -11,6 +12,12 @@ use std::sync::{Arc, mpsc};
 use std::thread;
 
 use ai_engine_core::{Candidate, KanaKanjiEngine, RerankedCandidate, rerank_candidates};
+
+#[cfg(feature = "llama-cpp")]
+mod llama_cpp;
+
+#[cfg(feature = "llama-cpp")]
+pub use llama_cpp::{CandidateBatchStats, LlamaCppConfig, LlamaCppScorer};
 
 /// The equal-depth candidate prefix passed to an evaluator.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -398,6 +405,34 @@ mod tests {
         FixedScorer, NoopScorer, score_and_rerank,
     };
 
+    struct ContextExampleScorer;
+
+    impl ContextScorer for ContextExampleScorer {
+        fn score_prefixes(
+            &self,
+            context: &str,
+            candidates: &[CandidatePrefix],
+        ) -> Result<Vec<f32>, super::ScoreError> {
+            let preferred = if context.contains("庭で犬を") {
+                "飼う"
+            } else if context.contains("店で犬を") {
+                "買う"
+            } else {
+                ""
+            };
+            Ok(candidates
+                .iter()
+                .map(|candidate| {
+                    if candidate.text == preferred {
+                        10.0
+                    } else {
+                        0.0
+                    }
+                })
+                .collect())
+        }
+    }
+
     #[test]
     fn noop_scorer_preserves_classical_order() {
         let engine = KanaKanjiEngine::new();
@@ -443,6 +478,26 @@ mod tests {
         assert_eq!(ranked[0].candidate.text, "東京");
         assert!(ranked[0].llm_score.abs() < f32::EPSILON);
         assert!((ranked[0].combined_score - 35.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn context_examples_choose_buy_or_keep_by_context() {
+        let mut engine = KanaKanjiEngine::new();
+        engine.add_word("かう", "飼う", 10);
+        engine.add_word("かう", "買う", 10);
+        let pipeline = ConversionPipeline::new(engine, ContextExampleScorer, 10.0);
+
+        let classical = pipeline.convert_classical("かう", 2);
+        assert_eq!(classical.len(), 2);
+        assert_eq!(classical[0].score, classical[1].score);
+
+        for (context, expected) in [("庭で犬を", "飼う"), ("店で犬を", "買う")] {
+            let ranked = pipeline
+                .convert("かう", context, 2)
+                .expect("context scoring");
+            assert_eq!(ranked[0].candidate.text, expected);
+            assert!((ranked[0].llm_score - 10.0).abs() < f32::EPSILON);
+        }
     }
 
     #[test]

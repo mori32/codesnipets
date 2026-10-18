@@ -6,6 +6,9 @@ use std::path::PathBuf;
 
 use ai_engine_core::KanaKanjiEngine;
 
+#[cfg(feature = "llama-cpp")]
+use ai_engine_llm::{ConversionPipeline, LlamaCppConfig, LlamaCppScorer};
+
 fn main() {
     if let Err(error) = run() {
         eprintln!("error: {error}");
@@ -13,10 +16,14 @@ fn main() {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn run() -> Result<(), Box<dyn Error>> {
     let mut input = None;
     let mut limit = 5_usize;
     let mut selected = None;
+    let mut context = String::new();
+    let mut model_path = None;
+    let mut score_weight = 1.0_f32;
     let mut dictionary_path = PathBuf::from("user_dictionary.tsv");
     let mut external_dictionaries = Vec::new();
     let mut static_dictionaries = Vec::new();
@@ -40,6 +47,22 @@ fn run() -> Result<(), Box<dyn Error>> {
                         .ok_or("--select requires a candidate number")?
                         .parse::<usize>()?,
                 );
+            }
+            "--context" => {
+                context = arguments
+                    .next()
+                    .ok_or("--context requires preceding text")?;
+            }
+            "--model" => {
+                model_path = Some(PathBuf::from(
+                    arguments.next().ok_or("--model requires a GGUF path")?,
+                ));
+            }
+            "--score-weight" => {
+                score_weight = arguments
+                    .next()
+                    .ok_or("--score-weight requires a number")?
+                    .parse()?;
             }
             "--user-dict" => {
                 dictionary_path = arguments
@@ -98,6 +121,10 @@ fn run() -> Result<(), Box<dyn Error>> {
         );
     }
 
+    if let Some(model_path) = model_path {
+        run_model_ranking(&engine, model_path, &input, &context, limit, score_weight)?;
+    }
+
     if let Some(index) = selected {
         let candidate = candidates
             .get(index)
@@ -109,12 +136,47 @@ fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn run_model_ranking(
+    engine: &KanaKanjiEngine,
+    model_path: PathBuf,
+    input: &str,
+    context: &str,
+    limit: usize,
+    score_weight: f32,
+) -> Result<(), Box<dyn Error>> {
+    #[cfg(feature = "llama-cpp")]
+    {
+        let scorer = LlamaCppScorer::load(model_path, LlamaCppConfig::default())?;
+        let pipeline = ConversionPipeline::new(engine.clone(), scorer, score_weight);
+        let ranked = pipeline.convert(input, context, limit)?;
+        println!("context: {context}");
+        println!("model-ranked:");
+        for (index, result) in ranked.iter().enumerate() {
+            println!(
+                "{index}: {}  classical={}  llm={:.4}  combined={:.4}",
+                result.candidate.text,
+                result.candidate.score,
+                result.llm_score,
+                result.combined_score
+            );
+        }
+        Ok(())
+    }
+
+    #[cfg(not(feature = "llama-cpp"))]
+    {
+        let _ = (engine, model_path, input, context, limit, score_weight);
+        Err("--model requires rebuilding ai_engine_cli with the llama-cpp feature".into())
+    }
+}
+
 fn print_help() {
     println!(
-        "ai-engine <romaji-or-kana> [--candidates N] [--select N] [--dictionary PATH] [--static-dictionary PATH] [--user-dict PATH]"
+        "ai-engine <romaji-or-kana> [--candidates N] [--context TEXT] [--model MODEL.gguf] [--score-weight N] [--select N] [--dictionary PATH] [--static-dictionary PATH] [--user-dict PATH]"
     );
     println!("examples:");
     println!("  ai-engine nihongohenkan");
     println!("  ai-engine にほんごへんかん --candidates 5");
     println!("  ai-engine toukyou --select 0");
+    println!("  ai-engine --model model.gguf --context \"庭で犬を\" かう --candidates 2");
 }

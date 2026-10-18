@@ -229,6 +229,11 @@ pub trait ContextScorer: Send + Sync {
 
 1. 小型モデルを同じ文脈・同じ候補集合で評価する
 2. 候補ごとの必要最小限の token log-prob を得る
+
+通常の入力途中の候補は open prefix として扱い、候補間の token 深度を
+`K_min` に揃える。一方、分節・単語を「ここで確定する」閉じた入力単位として
+比較する評価経路では、候補全体の log-prob に EOS の log-prob を加算する。
+この EOS は padding ではなく、分節末端で終了する確率を評価する実トークンである。
 3. 取得したスコアを正規化して `f32` で返す
 4. `weight` によって古典スコアとの影響度を調整する
 
@@ -263,6 +268,8 @@ P1 の候補 UI は予測を表示できるが、予測文字列を確定する�
 - `NoopScorer`、`FixedScorer`、`AsyncScorer`
 - `ConversionPipeline` による同期の候補生成・再順位付け・降格
 - `AsyncConversionPipeline` による最新世代だけの非同期再順位付け
+- llama.cpp GGUF の raw-logit 評価器と、全候補の最短 token 深度までに揃える再順位付け
+- 閉じた分節・文の比較用に、全 token + EOS を length penalty なしで合算する経路
 - core、LLM 境界、CLI、ベンチマークのテスト
 
 ### 未実装
@@ -270,8 +277,6 @@ P1 の候補 UI は予測を表示できるが、予測文字列を確定する�
 - P5 の大規模 mmap 静的辞書
 - 接続コストを含む本格的な形態素ラティス
 - SQLite またはバイナリ形式の P4 動的辞書
-- 実際の llama.cpp / Candle / ONNX 評価器
-- token 単位の shortest-token log-prob 実装
 - C-ABI の正式な P2 セッション API
 - 非同期ゴースト予測の UI 連携
 - SIMD 固有最適化

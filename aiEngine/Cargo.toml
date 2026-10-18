@@ -1,10 +1,13 @@
 [workspace]
 members = [
     "crates/ai_engine_core",
+    "crates/ai_engine_orchestrator",
     "crates/ai_engine_cli",
     "crates/ai_engine_bench",
     "crates/ai_engine_dict",
+    "crates/ai_engine_eval",
     "crates/ai_engine_llm",
+    "crates/ai_engine_crf",
 ]
 resolver = "2"
 

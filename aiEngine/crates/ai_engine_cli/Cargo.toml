@@ -5,8 +5,13 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[features]
+default = []
+llama-cpp = ["ai_engine_llm/llama-cpp"]
+
 [dependencies]
 ai_engine_core = { path = "../ai_engine_core" }
+ai_engine_llm = { path = "../ai_engine_llm" }
 
 [lints]
 workspace = true

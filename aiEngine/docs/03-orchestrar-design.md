@@ -1,5 +1,13 @@
 # P2: IME オーケストレータ設計
 
+## 2026-10-03: 初期実装と編集バッファの契約
+
+`crates/ai_engine_orchestrator` に、型付きイベント/action、セッション状態、層を保持する `EditLine`、input/output lattice、および開発用の辞書readerを追加した。入力バッファは生ローマ字の連結文字列を毎回正規化する方式ではなく、入力文字→かな→漢字の各置換元を参照として残す。compositionは最表層から取得する。以下の初期設計にある `raw_romaji` / `reading` は独立した正本ではなく、このバッファから得る情報となる。
+
+辞書queryは `DictionaryQuery::query(&EditLine, context)`。辞書側がinput latticeを辿り、読み位置の開始/終了と入力リンクを持つ単語をoutput latticeへ積む。漢字層のある範囲は読みと表記を両方拘束する。デバッグ用文字列queryも内部でinput latticeを作り、同じ辞書検索を呼ぶ。仕様と検証結果は [EditLineの実装契約](17-orchestrator-editline.md) を参照。
+
+現段階のreaderは小規模なインメモリtrieであり、P5 `.sdict` runtime、CRF補正、LLM worker、P4永続化、正式C-ABI、TSFは未接続。crawling/タグ補正とCRF実装を担当する他のAIの作業領域は変更しない。
+
 ## 1. 役割
 
 P2 は OS から受け取った抽象入力イベントを、P3（変換エンジン）、P4（動的辞書）、P5（静的辞書）へ配分するクロスプラットフォームのコントローラーである。
