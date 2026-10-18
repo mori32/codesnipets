@@ -1,0 +1,37 @@
+/target/
+*.pdb
+*.dll
+*.lib
+*.exe
+user_dictionary.json
+models/*.gguf
+models/*.onnx
+/tests/fixtures/GGUF/*.gguf
+/tests/fixtures/GGUF/*.part
+/third_party/llama.cpp/
+/third_party/llama.cpp-build/
+/third_party/llama.cpp-install/
+/third_party/llama.cpp-build-cuda/
+/third_party/llama.cpp-install-cuda/
+/third_party/.llama-cpp-*.zip
+/third_party/.llama-cpp-*/
+/third_party/llama.cpp-env.ps1
+/third_party/llama.cpp-env-cuda.ps1
+/dictionary/build/
+
+# Local build/cache output at every Cargo/Python project level
+**/target/
+**/__pycache__/
+*.py[cod]
+
+# Local corpus/dictionary inputs and run state
+/corpus/
+/dictionary/additions/
+/dictionary/ipadic-pos-inventory.tsv
+/tests/fixtures/GGUF/
+/ledger.sqlite3*
+/progress.json
+/tmp-worker*-preflight.json
+
+# Optional local corpus analyzer checkout
+/third_party/vibrato/

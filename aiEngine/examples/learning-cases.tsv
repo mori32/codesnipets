@@ -1,0 +1,38 @@
+# group<TAB>context<TAB>candidate<TAB>expected (1 = expected)
+# The context ends with a candidate marker so the scorer evaluates the
+# candidate as the next IME segment rather than rescoring the prompt.
+long-kisha	[USER_MEMORY] きしゃ=>帰社 | [CURRENT_INPUT] きしゃ | [CANDIDATE] 	帰社	1
+long-kisha	[USER_MEMORY] きしゃ=>帰社 | [CURRENT_INPUT] きしゃ | [CANDIDATE] 	記者	0
+long-shiyou	[USER_MEMORY] しよう=>仕様 | [CURRENT_INPUT] しよう | [CANDIDATE] 	仕様	1
+long-shiyou	[USER_MEMORY] しよう=>仕様 | [CURRENT_INPUT] しよう | [CANDIDATE] 	使用	0
+long-kaitou	[USER_MEMORY] かいとう=>回答 | [CURRENT_INPUT] かいとう | [CANDIDATE] 	回答	1
+long-kaitou	[USER_MEMORY] かいとう=>回答 | [CURRENT_INPUT] かいとう | [CANDIDATE] 	解答	0
+long-kousei	[USER_MEMORY] こうせい=>校正 | [CURRENT_INPUT] こうせい | [CANDIDATE] 	校正	1
+long-kousei	[USER_MEMORY] こうせい=>校正 | [CURRENT_INPUT] こうせい | [CANDIDATE] 	構成	0
+
+history-answer	[INPUT_HISTORY] アンケートに回答した。 | [CURRENT_INPUT] かいとう | [CANDIDATE] 	回答	1
+history-answer	[INPUT_HISTORY] アンケートに回答した。 | [CURRENT_INPUT] かいとう | [CANDIDATE] 	解答	0
+history-solution	[INPUT_HISTORY] 数学の問題に解答した。 | [CURRENT_INPUT] かいとう | [CANDIDATE] 	解答	1
+history-solution	[INPUT_HISTORY] 数学の問題に解答した。 | [CURRENT_INPUT] かいとう | [CANDIDATE] 	回答	0
+history-spec	[INPUT_HISTORY] 製品の仕様を確認した。 | [CURRENT_INPUT] しよう | [CANDIDATE] 	仕様	1
+history-spec	[INPUT_HISTORY] 製品の仕様を確認した。 | [CURRENT_INPUT] しよう | [CANDIDATE] 	使用	0
+history-use	[INPUT_HISTORY] この機能を使用した。 | [CURRENT_INPUT] しよう | [CANDIDATE] 	使用	1
+history-use	[INPUT_HISTORY] この機能を使用した。 | [CURRENT_INPUT] しよう | [CANDIDATE] 	仕様	0
+
+override-long-kisha-reporter	[USER_MEMORY] きしゃ=>帰社 | [CURRENT_CONTEXT] 新聞の | [CANDIDATE] 	記者	1
+override-long-kisha-reporter	[USER_MEMORY] きしゃ=>帰社 | [CURRENT_CONTEXT] 新聞の | [CANDIDATE] 	帰社	0
+override-long-kisha-return	[USER_MEMORY] きしゃ=>記者 | [CURRENT_CONTEXT] 出張後に | [CANDIDATE] 	帰社	1
+override-long-kisha-return	[USER_MEMORY] きしゃ=>記者 | [CURRENT_CONTEXT] 出張後に | [CANDIDATE] 	記者	0
+override-long-shiyou-use	[USER_MEMORY] しよう=>仕様 | [CURRENT_CONTEXT] この機能を | [CANDIDATE] 	使用	1
+override-long-shiyou-use	[USER_MEMORY] しよう=>仕様 | [CURRENT_CONTEXT] この機能を | [CANDIDATE] 	仕様	0
+override-long-shiyou-spec	[USER_MEMORY] しよう=>使用 | [CURRENT_CONTEXT] 製品の | [CANDIDATE] 	仕様	1
+override-long-shiyou-spec	[USER_MEMORY] しよう=>使用 | [CURRENT_CONTEXT] 製品の | [CANDIDATE] 	使用	0
+
+override-history-answer-solution	[INPUT_HISTORY] アンケートに回答した。 | [CURRENT_CONTEXT] 数学の問題に | [CANDIDATE] 	解答	1
+override-history-answer-solution	[INPUT_HISTORY] アンケートに回答した。 | [CURRENT_CONTEXT] 数学の問題に | [CANDIDATE] 	回答	0
+override-history-solution-answer	[INPUT_HISTORY] 数学の問題に解答した。 | [CURRENT_CONTEXT] アンケートに | [CANDIDATE] 	回答	1
+override-history-solution-answer	[INPUT_HISTORY] 数学の問題に解答した。 | [CURRENT_CONTEXT] アンケートに | [CANDIDATE] 	解答	0
+override-history-spec-use	[INPUT_HISTORY] 製品の仕様を確認した。 | [CURRENT_CONTEXT] この機能を | [CANDIDATE] 	使用	1
+override-history-spec-use	[INPUT_HISTORY] 製品の仕様を確認した。 | [CURRENT_CONTEXT] この機能を | [CANDIDATE] 	仕様	0
+override-history-use-spec	[INPUT_HISTORY] この機能を使用した。 | [CURRENT_CONTEXT] 製品の | [CANDIDATE] 	仕様	1
+override-history-use-spec	[INPUT_HISTORY] この機能を使用した。 | [CURRENT_CONTEXT] 製品の | [CANDIDATE] 	使用	0

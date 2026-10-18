@@ -1,0 +1,129 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: Rust checks
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace
+
+  native:
+    name: llama.cpp and FFI build
+    runs-on: windows-latest
+    needs: rust
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-native-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-native-
+
+      - name: Build llama.cpp
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          powershell -NoProfile -ExecutionPolicy Bypass `
+            -File .\scripts\setup-llama-cpp.ps1
+
+      - name: Build native Rust features
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          . .\third_party\llama.cpp-env.ps1
+          cargo build -p ai_engine_llm --features llama-cpp
+          cargo build -p ai_engine_cli --features llama-cpp
+          cargo build -p ai_engine_eval --features llama-cpp
+
+      - name: Native feature clippy
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          . .\third_party\llama.cpp-env.ps1
+          cargo clippy -p ai_engine_llm --features llama-cpp --all-targets -- -D warnings
+          cargo clippy -p ai_engine_eval --features llama-cpp --all-targets -- -D warnings
+
+      - name: Native feature tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          . .\third_party\llama.cpp-env.ps1
+          cargo test -p ai_engine_llm --features llama-cpp
+          cargo test -p ai_engine_eval --features llama-cpp
+
+      - name: Cache GGUF fixture
+        uses: actions/cache@v4
+        with:
+          path: tests/fixtures/GGUF/qwen2.5-0.5b-instruct-q8_0.gguf
+          key: qwen2.5-0.5b-instruct-q8_0-ca59ca7f13d0e15a8cfa77bd17e65d24f6844b554a7b6c12e07a5f89ff76844e
+
+      - name: Download GGUF fixture
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          powershell -NoProfile -ExecutionPolicy Bypass `
+            -File .\scripts\setup-gguf.ps1
+
+      - name: Model evaluation smoke test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          . .\third_party\llama.cpp-env.ps1
+          cargo run -p ai_engine_eval --features llama-cpp -- `
+            --cases examples\context-cases.tsv `
+            --dictionary examples\context-words.tsv `
+            --model tests\fixtures\GGUF\qwen2.5-0.5b-instruct-q8_0.gguf `
+            --candidates 2 `
+            --report target\qwen-eval.tsv
