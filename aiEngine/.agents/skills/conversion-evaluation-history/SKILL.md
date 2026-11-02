@@ -23,7 +23,7 @@ Record each completed corpus conversion evaluation as one row in the ongoing CSV
 
 ## Recorded fields
 
-Each row stores the completion date and timestamp, dictionary SHA-256 and path, source sample/cases/harness hashes, segmentation policy, held-out marker, evaluation counts, character accuracy and error rate, N-best oracle character accuracy and exact inclusion rate, top-1 exact rates, raw Viterbi and reranked N-best score summaries, top1-top2 margins, conversion latency percentiles, and conversion error count. Rate columns are percentages on a 0–100 scale.
+Each row stores the completion date and timestamp, dictionary SHA-256, source sample/cases/harness hashes, segmentation policy, held-out marker, evaluation counts, character accuracy and error rate, N-best oracle character accuracy and exact inclusion rate, top-1 exact rates, raw Viterbi and reranked N-best score summaries, top1-top2 margins, conversion latency percentiles, and conversion error count. Rate columns are percentages on a 0–100 scale.
 
 Raw path scores are summed descriptive values, not calibrated probabilities. Keep the interpretation in mind when comparing evaluations with different target lengths. Preserve the evaluation's `held_out` status; do not describe a run as independent test accuracy unless corpus/dictionary disjointness is established.
 
