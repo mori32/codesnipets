@@ -108,6 +108,19 @@ def build_row(summary_path: Path, prep_override: Path | None, raw_override: Path
     summary = read_json(summary_path)
     if summary.get("status") != "completed":
         raise ValueError(f"Evaluation is not completed (status={summary.get('status')!r})")
+    required = (
+        "dictionary_sha256",
+        "cases_sha256",
+        "harness_sha256",
+        "cases",
+        "reference_scalars",
+        "final_character_accuracy",
+        "nbest_exact_inclusion_rate",
+        "final_top_exact_rate",
+    )
+    missing = [key for key in required if summary.get(key) is None or summary.get(key) == ""]
+    if missing:
+        raise ValueError(f"Evaluation summary is missing required history fields: {', '.join(missing)}")
 
     run_file = summary_path.parent / "run.json"
     if run_file.exists():

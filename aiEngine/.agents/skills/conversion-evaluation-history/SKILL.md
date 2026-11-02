@@ -18,7 +18,15 @@ Record each completed corpus conversion evaluation as one row in the ongoing CSV
      --summary "C:\path\to\results\summary.json"
    ```
 
-   Pass `--preparation` or `--raw-scores` only when the metadata is not at its normal location. Use `--history-csv` when the user requests a different destination, such as a repository-tracked history. The default history is the local `C:\lmwork\int\coltime-conversion-history.csv` file. In the aiEngine repository, the tracked history is `aiEngine/docs/conversion-evaluation-history.csv`; pass that path with `--history-csv` when updating the repository copy.
+   From the aiEngine repository, update its tracked history with:
+
+   ```powershell
+   python "aiEngine\.agents\skills\conversion-evaluation-history\scripts\append_history.py" `
+     --summary "C:\path\to\results\summary.json" `
+     --history-csv "aiEngine\docs\conversion-evaluation-history.csv"
+   ```
+
+   Pass `--preparation` or `--raw-scores` only when the metadata is not at its normal location. Use `--history-csv` when the user requests a different destination. The default history is the local `C:\lmwork\int\coltime-conversion-history.csv` file.
 4. Verify the script reports `ok: true`, then inspect the CSV header and newest row. Re-running on the same summary is safe: the summary SHA-256 prevents a duplicate row.
 
 ## Recorded fields
